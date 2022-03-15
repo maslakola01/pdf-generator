@@ -8,10 +8,15 @@ from tkinter import *
 from tkinter import messagebox, Tk
 from datetime import date
 from datetime import datetime
+from distutils.core import setup
+from Cython.Build import cythonize
 import serial.tools.list_ports
 
 
+
 ser = serial.Serial("COM4", baudrate=9600, bytesize=8, parity='N', stopbits=1, timeout=2, xonxoff=False, rtscts=True)
+
+
 
 sum = 0
 count = 0
@@ -98,9 +103,12 @@ def callback(selection):
         f.write(str(selection) + '\n' + str(data))
 
 
+
+
 # Yes or No button
 def popup():
     response = messagebox.askyesno("Info", "Data received. Do you want to exit?")
+    ser.write(bytes(b'c'))
     if response == 0:
         Label(root, text="Data receied").pack()
     else:
@@ -185,7 +193,7 @@ drop.grid(row=1, column=1)
 button_newWindow.grid(row=1, column=2)
 myCheckLabel.grid(row=2, column=0)
 myButton.grid(row=2, column=1)
-button_info.grid(row=3, column=0, columnspan=5)
+button_info.grid(row=3, column=0, columnspan=5) #connect to devive
 
 button_quit.grid(row=4, column=0, columnspan=3)
 
