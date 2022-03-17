@@ -108,7 +108,9 @@ def callback(selection):
 # Yes or No button
 def popup():
     response = messagebox.askyesno("Info", "Data received. Do you want to exit?")
-    ser.write(bytes(b'c'))
+    #ser.write("00000000".encode())
+    #ser.write("1".encode())
+    ser.write("2".encode())
     if response == 0:
         Label(root, text="Data receied").pack()
     else:
