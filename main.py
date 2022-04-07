@@ -3,23 +3,22 @@ import copy
 
 import serial
 import codecs
+import os
 from fpdf import FPDF
 from tkinter import *
 from tkinter import messagebox, Tk
 from datetime import date
 from datetime import datetime
-from distutils.core import setup
-from Cython.Build import cythonize
 import serial.tools.list_ports
-
-
+import logging
+import threading
+import time
 
 ser = serial.Serial("COM4", baudrate=9600, bytesize=8, parity='N', stopbits=1, timeout=2, xonxoff=False, rtscts=True)
 
-
-
 sum = 0
 count = 0
+count2 = 0  # counter for while loop
 sum_0_8 = 0
 sum_8_16 = 0
 ADC = []
@@ -29,40 +28,11 @@ max_val_ADC = 4096
 U_ref = 2.5
 PD = 3
 
-while True:
-
-    if ser.inWaiting():
-        packet = ser.readline()
-        count = count + 1
-        hex = codecs.encode(packet, "hex")
-        sum = sum + int(hex[:-2], 16)
-        print(int(hex[:-2], 16))
-        ADC.append(int(hex[:-2], 16))
-
-        if count == 10:
-           sum_0_8 = sum-255-16
-
-
-        if count == 18:
-            sum_8_16 = sum - 255 - 16 -sum_0_8
-
-        if count == 21:
-
-            print(int(sum_0_8))
-            print(int(sum_8_16))
-            break
-
-
-for x in ADC:
-    U_wy.append(round((x/max_val_ADC)*U_ref*PD, 2))
-    U_wy_2.append(round((x/max_val_ADC)*U_ref*PD, 2))
-
-
-print(U_wy_2)
 
 file_read = open("readme.txt", "r+")
 file_read.truncate(0)
 file_read.close()
+
 
 with open("options.txt", "r") as file:
     options = [[str(x) for x in line.split()] for line in file]
@@ -76,7 +46,7 @@ root.title('Data')
 # textbox
 e = Entry(root)
 e.get()
-e.insert(0, "Enter serial number: ")
+e.insert(0, "Wpisz numer seryjny: ")
 
 today = date.today()
 now = datetime.now()
@@ -84,10 +54,40 @@ current_time = now.strftime("%H:%M:%S")
 
 name_entry = Entry(root)
 name_entry.get()
-name_entry.insert(0, "Enter name: ")
+name_entry.insert(0, "Wpisz imie i nazwisko: ")
 
 newWindow = None
 new_name = None
+
+def data_receiving():
+    while True:
+
+        if ser.inWaiting():
+            packet = ser.readline()
+            count = count + 1
+            hex = codecs.encode(packet, "hex")
+            sum = sum + int(hex[:-2], 16)
+            print(int(hex[:-2], 16))
+            ADC.append(int(hex[:-2], 16))
+
+            if count == 10:
+                sum_0_8 = sum - 255 - 16
+
+            if count == 18:
+                sum_8_16 = sum - 255 - 16 - sum_0_8
+
+            if count == 21:
+                print(int(sum_0_8))
+                print(int(sum_8_16))
+                break
+
+            print(count)
+
+    for x in ADC:
+        U_wy.append(round((x / max_val_ADC) * U_ref * PD, 2))
+        U_wy_2.append(round((x / max_val_ADC) * U_ref * PD, 2))
+
+    print(U_wy_2)
 
 
 # adding DropMenu choice to a textfile
@@ -103,23 +103,22 @@ def callback(selection):
         f.write(str(selection) + '\n' + str(data))
 
 
-
-
 # Yes or No button
 def popup():
-    response = messagebox.askyesno("Info", "Data received. Do you want to exit?")
-    #ser.write("00000000".encode())
-    #ser.write("1".encode())
-    ser.write("2".encode())
+    response = messagebox.askyesno("Info", "Dane otrzymane. Czy chcesz wyjsc?")
+    ser.write("1".encode())
+
     if response == 0:
-        Label(root, text="Data receied").pack()
+        Label(root, text="Data otrzymane").pack()
+
     else:
         root.destroy()
 
 
+
 # view serial number and add to a textfile
 def myClick():
-    myLabel = Label(root, text="Serial number: " + e.get())
+    myLabel = Label(root, text="Numer seryjny: " + e.get())
 
     entry = e.get()
     with open('readme.txt', 'r+') as f:
@@ -155,7 +154,7 @@ def OpenNewWindow():
     newWindow = Toplevel(root)
     newWindow.title("New Window")
     newWindow.geometry("100x100")
-    button = Button(newWindow, text="Submit", command=create_secondwindow_button)
+    button = Button(newWindow, text="Zatwierdz", command=create_secondwindow_button)
     new_name = Entry(newWindow)
     new_name.get()
     new_name.insert(0, "Entry name: ")
@@ -164,30 +163,22 @@ def OpenNewWindow():
     options.append(new_name.get())
 
 
-# options for a DropMenu
-# options = [
-#    "Ola Maslak",
-#    "Maria Zakolska",
-#    "Andrzej Kwasniewski",
-# ]
-
-
 clicked = StringVar()
 # clicked.set(options[0])
 clicked.set(" ")
 
-SerialLabel = Label(root, text="Serial number: ", padx=5, pady=5)
-myButton = Button(root, text="Submit", command=myClick, fg="white", bg="green")
-myLabel = Label(root, text="Contractor: ", padx=5, pady=5)
-myCheckLabel = Label(root, text="Approval: ")
-button_newWindow = Button(root, text="Add new person", command=OpenNewWindow)
+SerialLabel = Label(root, text="Numer seryjny: ", padx=5, pady=5)
+myButton = Button(root, text="Zatwierdz", command=myClick, fg="white", bg="green")
+myLabel = Label(root, text="Wykonawca: ", padx=5, pady=5)
+myCheckLabel = Label(root, text="Zatwierdzenie: ")
+button_newWindow = Button(root, text="Dodaj nowa osobe", command=OpenNewWindow)
 
 drop = OptionMenu(root, clicked, *options, command=callback)
-button_quit = Button(root, text="EXIT", command=root.quit)
-button_info = Button(root, text="Connecting to device", command=popup)
+button_quit = Button(root, text="WYJSCIE", command=root.quit)
+button_info = Button(root, text="Polaczenie z urzadzeniem", command=popup)
+
 
 # Pack to root
-
 SerialLabel.grid(row=0, column=0)
 e.grid(row=0, column=1)
 myLabel.grid(row=1, column=0)
@@ -195,12 +186,13 @@ drop.grid(row=1, column=1)
 button_newWindow.grid(row=1, column=2)
 myCheckLabel.grid(row=2, column=0)
 myButton.grid(row=2, column=1)
-button_info.grid(row=3, column=0, columnspan=5) #connect to devive
-
+button_info.grid(row=3, column=0, columnspan=5)  # connect to devive
 button_quit.grid(row=4, column=0, columnspan=3)
 
 root.mainloop()
 
+x = threading.Thread(target=data_receiving(), args=(1,))
+x.start()
 
 # Create instance of FPDF class
 # Letter size paper, use inches as unit of measure
@@ -223,6 +215,7 @@ pdf.alias_nb_pages()
 # Add new page. Without this you cannot create the document.
 pdf.add_page()
 th = pdf.font_size
+
 
 # matrix initialization with preliminary data
 data_info = [
@@ -343,12 +336,6 @@ pdf.ln(0.5)
 file = open('do_testu.txt', 'r').read()
 lines = file.split('\n')
 
-#i = 0
-#for line in lines:
-#    data[i][3] = str(line)
-#    i = i + 1
-
-
 del U_wy[11:21]
 del U_wy[0:1]
 
@@ -358,7 +345,6 @@ i = 0
 for x in U_wy:
     data[i][3] = str(x)
     i = i + 1
-
 
     pdf.ln(th)
 
@@ -449,7 +435,6 @@ for line1 in lines1:
 data_final[0][3] = str(U_wy_2[11])
 data_final[10][3] = str(U_wy_2[12])
 
-
 pdf.set_font('Times', '', 10)
 pdf.ln(0.5)
 pdf.multi_cell(0, 4, '\n')
@@ -487,4 +472,5 @@ for row in data_final:
     count2 += 1
     pdf.ln(3 * th)
 
-pdf.output('pdf_1.pdf', 'F')
+
+pdf.output('pdf2.pdf', 'F')
